@@ -412,7 +412,8 @@ class RestartWinApp:
     def open_settings(self, first_time=False):
         win = tk.Toplevel(self.root)
         win.title("Pengaturan Sumber Zona")
-        win.geometry("500x545")
+        win.geometry("500x600")
+        win.minsize(480, 560)
         win.configure(bg=BG)
         win.transient(self.root)
         win.grab_set()
@@ -423,12 +424,21 @@ class RestartWinApp:
 
         mode_var = tk.StringVar(value=self.source_mode)
 
-        # Pemilih Mode
+        # 1. PACK HEADER MODE (ATAS)
         mode_bar = tk.Frame(win, bg=BG, pady=10, padx=12)
-        mode_bar.pack(fill="x")
+        mode_bar.pack(side="top", fill="x")
 
+        # 2. PACK TOMBOL SIMPAN & BATAL LEBIH DULU (PALING BAWAH)
+        act_bar = tk.Frame(win, bg=BG, pady=10, padx=12)
+        act_bar.pack(side="bottom", fill="x")
+
+        # 3. PACK BARIS EXPORT & IMPORT (DI ATAS TOMBOL SIMPAN)
+        io_bar = tk.Frame(win, bg=BG, pady=(8, 0), padx=12)
+        io_bar.pack(side="bottom", fill="x")
+
+        # 4. PACK CONTAINER FORM TERAKHIR AGAR MENGISI SISA RUANG TENGAH
         container = tk.Frame(win, bg=PANEL, padx=14, pady=14)
-        container.pack(fill="both", expand=True, padx=12)
+        container.pack(side="top", fill="both", expand=True, padx=12)
 
         # --- FORM DATABASE ---
         db_frame = tk.Frame(container, bg=PANEL)
@@ -540,10 +550,7 @@ class RestartWinApp:
 
         switch_mode(self.source_mode)
 
-        # --- BARIS EXPORT & IMPORT SETTING ---
-        io_bar = tk.Frame(win, bg=BG, pady=(8, 0), padx=12)
-        io_bar.pack(fill="x")
-
+        # --- ISI TOMBOL EXPORT & IMPORT KE io_bar YANG SUDAH DI-PACK DI ATAS ---
         def export_settings():
             file_path = filedialog.asksaveasfilename(
                 parent=win,
@@ -644,10 +651,7 @@ class RestartWinApp:
             font=("Segoe UI", 8, "bold"), bd=0, pady=6, cursor="hand2", command=import_settings
         ).pack(side="left", fill="x", expand=True, padx=(4, 0))
 
-        # --- TOMBOL SIMPAN & BATAL BAWAH ---
-        act_bar = tk.Frame(win, bg=BG, pady=10, padx=12)
-        act_bar.pack(fill="x")
-
+        # --- ISI TOMBOL SIMPAN & BATAL KE act_bar YANG SUDAH DI-PACK DI ATAS ---
         def save_all():
             if mode_var.get() == "db":
                 new_db = {k: v.get().strip() for k, v in db_entries.items()}
