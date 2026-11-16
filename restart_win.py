@@ -441,8 +441,14 @@ class RestartWinApp:
             ("password", "Password", True),
             ("database", "Nama Database", False),
         ]:
-            tk.Label(db_frame, text=label, bg=PANEL, fg=MUTED, font=("Segoe UI", 9), anchor="w").pack(fill="x", pady=(4, 1))
-            ent = tk.Entry(db_frame, bg=CARD_BG, fg=WHITE, insertbackground=WHITE, bd=0, font=("Segoe UI", 10), show="*" if secret else "")
+            tk.Label(
+                db_frame, text=label, bg=PANEL, fg=MUTED,
+                font=("Segoe UI", 9), anchor="w"
+            ).pack(fill="x", pady=(4, 1))
+            ent = tk.Entry(
+                db_frame, bg=CARD_BG, fg=WHITE, insertbackground=WHITE,
+                bd=0, font=("Segoe UI", 10), show="*" if secret else ""
+            )
             ent.insert(0, str(cfg.get(key, "")))
             ent.pack(fill="x", ipady=5)
             db_entries[key] = ent
@@ -496,8 +502,14 @@ class RestartWinApp:
 
         btn_m_row = tk.Frame(manual_frame, bg=PANEL)
         btn_m_row.pack(fill="x", pady=(0, 6))
-        tk.Button(btn_m_row, text="+ Tambah Zona", bg=BLUE, fg=WHITE, bd=0, padx=10, pady=4, cursor="hand2", command=add_manual).pack(side="left")
-        tk.Button(btn_m_row, text="Hapus Terpilih", bg=RED, fg=WHITE, bd=0, padx=10, pady=4, cursor="hand2", command=del_manual).pack(side="right")
+        tk.Button(
+            btn_m_row, text="+ Tambah Zona", bg=BLUE, fg=WHITE,
+            bd=0, padx=10, pady=4, cursor="hand2", command=add_manual
+        ).pack(side="left")
+        tk.Button(
+            btn_m_row, text="Hapus Terpilih", bg=RED, fg=WHITE,
+            bd=0, padx=10, pady=4, cursor="hand2", command=del_manual
+        ).pack(side="right")
 
         refresh_listbox()
 
@@ -514,10 +526,16 @@ class RestartWinApp:
                 btn_db.config(bg=CARD_BG)
                 manual_frame.pack(fill="both", expand=True)
 
-        btn_db = tk.Button(mode_bar, text="MODE DATABASE", font=("Segoe UI", 9, "bold"), fg=WHITE, bd=0, pady=7, cursor="hand2", command=lambda: switch_mode("db"))
+        btn_db = tk.Button(
+            mode_bar, text="MODE DATABASE", font=("Segoe UI", 9, "bold"),
+            fg=WHITE, bd=0, pady=7, cursor="hand2", command=lambda: switch_mode("db")
+        )
         btn_db.pack(side="left", fill="x", expand=True, padx=(0, 4))
 
-        btn_man = tk.Button(mode_bar, text="MODE MANUAL", font=("Segoe UI", 9, "bold"), fg=WHITE, bd=0, pady=7, cursor="hand2", command=lambda: switch_mode("manual"))
+        btn_man = tk.Button(
+            mode_bar, text="MODE MANUAL", font=("Segoe UI", 9, "bold"),
+            fg=WHITE, bd=0, pady=7, cursor="hand2", command=lambda: switch_mode("manual")
+        )
         btn_man.pack(side="left", fill="x", expand=True, padx=(4, 0))
 
         switch_mode(self.source_mode)
@@ -549,4 +567,337 @@ class RestartWinApp:
                     "exported_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     "source_mode": mode_var.get(),
                     "db_config": current_db,
-                    "manual_zones
+                    "manual_zones": temp_manual,
+                }
+                with open(file_path, "w", encoding="utf-8") as f:
+                    json.dump(payload, f, indent=2)
+
+                messagebox.showinfo(
+                    "Export Berhasil",
+                    "Pengaturan berhasil diekspor ke:\n{}".format(file_path),
+                    parent=win
+                )
+            except Exception as e:
+                messagebox.showerror(
+                    "Export Gagal",
+                    "Gagal menyimpan file:\n{}".format(e),
+                    parent=win
+                )
+
+        def import_settings():
+            file_path = filedialog.askopenfilename(
+                parent=win,
+                title="Import Pengaturan dari JSON",
+                filetypes=[("JSON Files", "*.json"), ("All Files", "*.*")],
+            )
+            if not file_path:
+                return
+
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    payload = json.load(f)
+
+                if not isinstance(payload, dict):
+                    raise ValueError("Format file JSON tidak valid.")
+
+                imp_mode = payload.get("source_mode")
+                imp_db = payload.get("db_config")
+                imp_manual = payload.get("manual_zones")
+
+                if imp_mode not in ("db", "manual") and not imp_db and not imp_manual:
+                    raise ValueError("File JSON tidak berisi konfigurasi RestartDPD.")
+
+                if isinstance(imp_db, dict):
+                    for key, ent in db_entries.items():
+                        ent.delete(0, tk.END)
+                        ent.insert(0, str(imp_db.get(key, DB_DEFAULTS.get(key, ""))))
+
+                if isinstance(imp_manual, list):
+                    temp_manual.clear()
+                    for item in imp_manual:
+                        if isinstance(item, (list, tuple)) and len(item) == 3:
+                            temp_manual.append([str(item[0]), str(item[1]), str(item[2])])
+                    refresh_listbox()
+
+                if imp_mode in ("db", "manual"):
+                    switch_mode(imp_mode)
+
+                messagebox.showinfo(
+                    "Import Berhasil",
+                    "Data konfigurasi berhasil dimuat ke form.\nKlik 'SIMPAN & TERAPKAN' untuk mengaktifkan.",
+                    parent=win
+                )
+            except Exception as e:
+                messagebox.showerror(
+                    "Import Gagal",
+                    "Gagal membaca file pengaturan:\n{}".format(e),
+                    parent=win
+                )
+
+        tk.Button(
+            io_bar, text="EXPORT SETTING (.JSON)", bg=CARD_BG, fg=WHITE,
+            font=("Segoe UI", 8, "bold"), bd=0, pady=6, cursor="hand2", command=export_settings
+        ).pack(side="left", fill="x", expand=True, padx=(0, 4))
+
+        tk.Button(
+            io_bar, text="IMPORT SETTING (.JSON)", bg=CARD_BG, fg=WHITE,
+            font=("Segoe UI", 8, "bold"), bd=0, pady=6, cursor="hand2", command=import_settings
+        ).pack(side="left", fill="x", expand=True, padx=(4, 0))
+
+        # --- TOMBOL SIMPAN & BATAL BAWAH ---
+        act_bar = tk.Frame(win, bg=BG, pady=10, padx=12)
+        act_bar.pack(fill="x")
+
+        def save_all():
+            if mode_var.get() == "db":
+                new_db = {k: v.get().strip() for k, v in db_entries.items()}
+                if not (new_db["host"] and new_db["user"] and new_db["database"]):
+                    messagebox.showerror("Error", "Host, User, dan Database wajib diisi.", parent=win)
+                    return
+                try:
+                    new_db["port"] = int(new_db["port"] or 3306)
+                except ValueError:
+                    messagebox.showerror("Error", "Port harus berupa angka.", parent=win)
+                    return
+                self.save_db_config(new_db)
+                self.save_source_mode("db")
+            else:
+                if not temp_manual:
+                    messagebox.showerror("Error", "Tambahkan minimal 1 zona.", parent=win)
+                    return
+                self.save_manual_zones(temp_manual)
+                self.save_source_mode("manual")
+
+            win.destroy()
+            self.load_zones()
+
+        tk.Button(
+            act_bar, text="SIMPAN & TERAPKAN", bg=GREEN, fg=WHITE,
+            font=("Segoe UI", 9, "bold"), bd=0, pady=8, cursor="hand2", command=save_all
+        ).pack(side="left", fill="x", expand=True, padx=(0, 4))
+
+        if not first_time:
+            tk.Button(
+                act_bar, text="BATAL", bg=RED, fg=WHITE,
+                font=("Segoe UI", 9, "bold"), bd=0, pady=8, cursor="hand2", command=win.destroy
+            ).pack(side="left", fill="x", expand=True, padx=(4, 0))
+
+    # --------------------------------------------------------
+    # LOAD DATA ZONA
+    # --------------------------------------------------------
+
+    def load_zones(self):
+        if self.busy:
+            return
+
+        if self.source_mode == "manual":
+            if not self.manual_zones:
+                self.conn_label.config(text="MANUAL KOSONG", fg=ORANGE)
+                self.set_status("Daftar zona manual kosong. Silakan isi di Setting.")
+                self.open_settings(first_time=True)
+                return
+
+            self.data = group_and_sort_rows(self.manual_zones)
+            self.conn_label.config(text="MANUAL MODE", fg=BLUE)
+            self.set_status("Konfigurasi manual dimuat ({} item).".format(len(self.manual_zones)))
+            self.render()
+            return
+
+        if not self.db_config:
+            self.conn_label.config(text="BELUM DISETTING", fg=ORANGE)
+            self.set_status("Pilih konfigurasi Database atau Manual.")
+            self.open_settings(first_time=True)
+            return
+
+        self.set_status("Mengambil data dari database...")
+        self.conn_label.config(text="LOADING", fg=ORANGE)
+        threading.Thread(target=self._load_thread, daemon=True).start()
+
+    def _load_thread(self):
+        try:
+            data = fetch_zones_from_db(self.db_config)
+            with open(self.cache_file, "w") as f:
+                json.dump(data, f)
+            msg = "Database berhasil dimuat."
+            connected = True
+        except Exception as e:
+            try:
+                with open(self.cache_file, "r") as f:
+                    data = json.load(f)
+                msg = "Database gagal. Menggunakan cache terakhir."
+                connected = False
+            except Exception:
+                data = {}
+                msg = "Database gagal: {}".format(e)
+                connected = False
+
+        self.root.after(0, lambda: self._apply_data(data, msg, connected))
+
+    def _apply_data(self, data, msg, connected):
+        self.data = data
+        if connected:
+            self.conn_label.config(text="DB CONNECTED", fg=GREEN)
+        else:
+            self.conn_label.config(text="CACHE MODE", fg=ORANGE)
+        self.set_status(msg)
+        self.render()
+
+    # --------------------------------------------------------
+    # RENDER KARTU & NAVIGASI
+    # --------------------------------------------------------
+
+    def select_tab(self, idx):
+        self.current_tab = idx
+        for i, btn in enumerate(self.tab_buttons):
+            if i == idx:
+                btn.config(bg=SECTIONS[i][4], fg=WHITE)
+            else:
+                btn.config(bg=PANEL, fg=MUTED)
+        self.render()
+
+    def render(self):
+        for w in self.scroll_frame.winfo_children():
+            w.destroy()
+
+        _, tipe, cmd_fn, label_fn, color = SECTIONS[self.current_tab]
+        items = self.data.get(tipe, [])
+
+        if not items:
+            tk.Label(
+                self.scroll_frame,
+                text="\n\nDATA TIDAK DITEMUKAN\nTidak ada zona untuk kategori ini.",
+                font=("Segoe UI", 11, "bold"), bg=BG, fg=MUTED, justify="center"
+            ).pack(fill="both", expand=True, pady=40)
+            return
+
+        if tipe == "P_MAP":
+            groups = {}
+            for zona, ip in items:
+                groups.setdefault(ip, []).append(zona)
+
+            for ip, zonas in sorted(groups.items()):
+                card = tk.Frame(self.scroll_frame, bg=CARD_BG, padx=12, pady=10)
+                card.pack(fill="x", pady=5)
+
+                hdr = tk.Frame(card, bg=CARD_BG)
+                hdr.pack(fill="x", pady=(0, 6))
+                tk.Label(hdr, text="IP TARGET", font=("Segoe UI", 10, "bold"), bg=CARD_BG, fg=WHITE).pack(side="left")
+                tk.Label(hdr, text=ip, font=("Consolas", 10), bg=CARD_BG, fg=MUTED).pack(side="right")
+
+                grid = tk.Frame(card, bg=CARD_BG)
+                grid.pack(fill="x")
+                cols = 4
+                for idx, z in enumerate(zonas):
+                    r, c = divmod(idx, cols)
+                    grid.columnconfigure(c, weight=1)
+                    b = tk.Button(
+                        grid, text="ZONA " + z, font=("Segoe UI", 9, "bold"),
+                        bg=color, fg=WHITE, bd=0, pady=8, cursor="hand2",
+                        command=lambda zz=z, i=ip: self.on_card(label_fn(zz), i, cmd_fn(zz))
+                    )
+                    b.grid(row=r, column=c, sticky="ew", padx=3, pady=3)
+            return
+
+        grid_wrap = tk.Frame(self.scroll_frame, bg=BG)
+        grid_wrap.pack(fill="both", expand=True)
+        grid_wrap.columnconfigure(0, weight=1)
+        grid_wrap.columnconfigure(1, weight=1)
+
+        for idx, (zona, ip) in enumerate(items):
+            r, c = divmod(idx, 2)
+            card = tk.Frame(grid_wrap, bg=CARD_BG, cursor="hand2")
+            card.grid(row=r, column=c, sticky="nsew", padx=5, pady=5)
+
+            accent = tk.Frame(card, bg=color, width=6)
+            accent.pack(side="left", fill="y")
+
+            body = tk.Frame(card, bg=CARD_BG, padx=12, pady=12)
+            body.pack(side="left", fill="both", expand=True)
+
+            lbl_t = tk.Label(body, text=label_fn(zona), font=("Segoe UI", 13, "bold"), bg=CARD_BG, fg=WHITE, anchor="w")
+            lbl_t.pack(fill="x")
+
+            lbl_s = tk.Label(body, text="TARGET : " + ip, font=("Consolas", 9), bg=CARD_BG, fg=MUTED, anchor="w")
+            lbl_s.pack(fill="x", pady=(4, 0))
+
+            for widget in (card, body, lbl_t, lbl_s):
+                widget.bind("<Button-1>", lambda e, z=zona, i=ip: self.on_card(label_fn(z), i, cmd_fn(z)))
+
+    # --------------------------------------------------------
+    # EKSEKUSI PERINTAH
+    # --------------------------------------------------------
+
+    def on_card(self, name, ip, command):
+        if self.busy:
+            self.set_status("Sedang memproses perintah sebelumnya...")
+            return
+
+        if CONFIRM_BEFORE_SEND:
+            ok = messagebox.askyesno(
+                "Konfirmasi Perintah",
+                "Kirim perintah berikut?\n\nPerintah: {}\nTarget: {}\nIP: {}".format(command, name, ip)
+            )
+            if not ok:
+                return
+
+        self.execute(name, ip, command)
+
+    def execute(self, name, ip, command):
+        if self.busy:
+            return
+
+        self.busy = True
+        self.set_status("Mengirim {} ke {} ({})...".format(command, name, ip))
+        self.conn_label.config(text="PROCESSING", fg=ORANGE)
+
+        def work():
+            ok, msg = send_command(ip, command)
+            if ok:
+                result = "[SUKSES] {} - Perintah {} berhasil.".format(name, command)
+                color = GREEN
+            else:
+                result = "[GAGAL] {} - {}".format(name, msg)
+                color = RED
+
+            self.root.after(0, lambda: self.finish_execute(result, color, ok))
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def finish_execute(self, result, color, ok):
+        self.busy = False
+        self.set_status(result)
+        self.conn_label.config(text="COMMAND OK" if ok else "COMMAND FAILED", fg=color)
+        self.show_toast_popup(ok, result)
+
+    def show_toast_popup(self, ok, detail):
+        if detail.startswith("["):
+            detail = detail.split("]", 1)[-1].strip()
+
+        accent = GREEN if ok else RED
+        title = "BERHASIL" if ok else "GAGAL"
+
+        pop = tk.Toplevel(self.root)
+        pop.overrideredirect(True)
+        pop.configure(bg=PANEL, highlightbackground=accent, highlightthickness=2)
+        self.set_window_icon(pop)
+
+        self.root.update_idletasks()
+        w, h = 340, 130
+        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - (w // 2)
+        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - (h // 2)
+        pop.geometry("{}x{}+{}+{}".format(w, h, x, y))
+
+        tk.Label(pop, text=title, font=("Segoe UI", 14, "bold"), bg=PANEL, fg=accent).pack(pady=(16, 6))
+        tk.Label(pop, text=detail, font=("Segoe UI", 9), bg=PANEL, fg=WHITE, wraplength=300, justify="center").pack(padx=15)
+
+        pop.after(1400 if ok else 3200, pop.destroy)
+
+    def set_status(self, text):
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        self.status_label.config(text="[{}] {}".format(timestamp, text))
+
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = RestartWinApp(root)
+    root.mainloop()
