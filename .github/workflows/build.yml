@@ -24,26 +24,26 @@ jobs:
           python -m pip install --upgrade pip
           pip install pymysql pyinstaller pillow
 
-      - name: Siapkan icon2.png (Gunakan yang ada atau buat default)
+      - name: Siapkan icon2.ico (Gunakan yang ada atau buat default)
         run: |
           python -c "
           import os
-          if not os.path.exists('icon2.png'):
+          if not os.path.exists('icon2.ico'):
               from PIL import Image, ImageDraw
               img = Image.new('RGBA', (256, 256), (0, 0, 0, 0))
               draw = ImageDraw.Draw(img)
               draw.rounded_rectangle([16, 16, 240, 240], radius=56, fill='#217AC7')
               draw.ellipse([64, 64, 192, 192], outline='#FFFFFF', width=22)
               draw.polygon([(145, 36), (195, 76), (145, 112)], fill='#1F9966')
-              img.save('icon2.png', format='ICO', sizes=[(256, 256), (128, 128), (64, 64), (32, 32), (16, 16)])
-              print('Ikon default icon2.png berhasil dibuat.')
+              img.save('icon2.ico', format='ICO', sizes=[(256, 256), (128, 128), (64, 64), (32, 32), (16, 16)])
+              print('Ikon default icon2.ico berhasil dibuat.')
           else:
-              print('Menggunakan icon2.png dari repository.')
+              print('Menggunakan icon2.ico dari repository.')
           "
 
       - name: Build EXE dengan PyInstaller dan Ikon
         run: |
-          pyinstaller --onefile --noconsole --icon="icon2.png" --add-data "icon2.png;." --name "RestartDPD" restart_win.py
+          pyinstaller --onefile --noconsole --icon="icon2.ico" --add-data "icon2.ico;." --name "RestartDPD" restart_win.py
 
       - name: Upload hasil build (.exe)
         uses: actions/upload-artifact@v4
