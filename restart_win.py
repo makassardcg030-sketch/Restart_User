@@ -42,6 +42,11 @@ BLUE = "#217AC7"
 GREEN = "#1F9966"
 ORANGE = "#D96E1F"
 RED = "#CC3838"
+HOVER = "#2A405E"
+CARD_HOVER = "#28405F"
+BORDER = "#2C4262"
+WARN_BG = "#FFD54A"
+WARN_FG = "#1A1200"
 
 SECTIONS = [
     ("RESTART", "STANDARD", lambda z: "RUN_MACRO", lambda z: "Zona " + z, BLUE),
@@ -136,9 +141,9 @@ def send_command(ip, command):
 class RestartWinApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Restart DPD Control Center (Windows Edition)")
-        self.root.geometry("760x640")
-        self.root.minsize(640, 500)
+        self.root.title("Restart DPD & DCP Control Center (Windows Edition)")
+        self.root.geometry("820x720")
+        self.root.minsize(680, 560)
         self.root.configure(bg=BG)
 
         self.set_window_icon(self.root)
@@ -181,70 +186,90 @@ class RestartWinApp:
     # UI UTAMA
     # --------------------------------------------------------
 
+    def make_button(self, parent, text, bg, hover, command, padx=16, pady=8):
+        btn = tk.Button(
+            parent, text=text, font=("Segoe UI", 9, "bold"),
+            bg=bg, fg=WHITE, activebackground=hover, activeforeground=WHITE,
+            bd=0, relief="flat", padx=padx, pady=pady, cursor="hand2",
+            takefocus=0, command=command
+        )
+        btn.bind("<Enter>", lambda e: btn.config(bg=hover))
+        btn.bind("<Leave>", lambda e: btn.config(bg=bg))
+        return btn
+
     def build_ui(self):
         # 1. HEADER
-        header = tk.Frame(self.root, bg=PANEL, padx=15, pady=12)
-        header.pack(fill="x", padx=10, pady=(10, 5))
+        header = tk.Frame(self.root, bg=PANEL)
+        header.pack(fill="x", padx=12, pady=(12, 6))
 
-        title_frame = tk.Frame(header, bg=PANEL)
-        title_frame.pack(side="left", fill="y")
+        tk.Frame(header, bg=BLUE, width=5).pack(side="left", fill="y")
+        header_inner = tk.Frame(header, bg=PANEL, padx=14, pady=12)
+        header_inner.pack(side="left", fill="both", expand=True)
 
         tk.Label(
-            title_frame, text="RESTART DPD", font=("Segoe UI", 16, "bold"),
+            header_inner, text="RESTART DPD & DCP", font=("Segoe UI", 18, "bold"),
             bg=PANEL, fg=WHITE, anchor="w"
-        ).pack(fill="x")
-        tk.Label(
-            title_frame, text="CONTROL CENTER  |  WINDOWS MANAGEMENT",
-            font=("Segoe UI", 8), bg=PANEL, fg=MUTED, anchor="w"
-        ).pack(fill="x")
+        ).pack(side="left")
 
-        btn_refresh = tk.Button(
-            header, text="REFRESH", font=("Segoe UI", 9, "bold"),
-            bg=BLUE, fg=WHITE, activebackground="#1A62A1", activeforeground=WHITE,
-            bd=0, padx=14, pady=8, cursor="hand2", command=self.load_zones
-        )
-        btn_refresh.pack(side="right", padx=(6, 0))
+        self.make_button(header_inner, "REFRESH", BLUE, "#1A62A1", self.load_zones).pack(side="right", padx=(8, 0))
+        self.make_button(header_inner, "SETTING", CARD_BG, HOVER, self.open_settings).pack(side="right")
 
-        btn_setting = tk.Button(
-            header, text="SETTING", font=("Segoe UI", 9, "bold"),
-            bg=CARD_BG, fg=WHITE, activebackground="#2A405E", activeforeground=WHITE,
-            bd=0, padx=14, pady=8, cursor="hand2", command=self.open_settings
-        )
-        btn_setting.pack(side="right")
+        # 2. QUICK COMMAND (ZONA / CZONA / PZONA)
+        quick_card = tk.Frame(self.root, bg=PANEL, padx=14, pady=12)
+        quick_card.pack(fill="x", padx=12, pady=6)
 
-        # 2. QUICK INPUT BAR (ZONA / CZONA / PZONA)
-        quick_frame = tk.Frame(self.root, bg=PANEL, padx=12, pady=10)
-        quick_frame.pack(fill="x", padx=10, pady=5)
+        quick_top = tk.Frame(quick_card, bg=PANEL)
+        quick_top.pack(fill="x")
 
         tk.Label(
-            quick_frame, text="QUICK COMMAND :", font=("Segoe UI", 9, "bold"),
+            quick_top, text="QUICK COMMAND", font=("Segoe UI", 10, "bold"),
             bg=PANEL, fg=WHITE
-        ).pack(side="left", padx=(0, 8))
+        ).pack(side="left", padx=(0, 12))
 
         self.quick_var = tk.StringVar()
         self.quick_entry = tk.Entry(
-            quick_frame, textvariable=self.quick_var, font=("Consolas", 11, "bold"),
-            bg=CARD_BG, fg=WHITE, insertbackground=WHITE, bd=0, width=22
+            quick_top, textvariable=self.quick_var, font=("Consolas", 14, "bold"),
+            bg=CARD_BG, fg=WHITE, insertbackground=WHITE, bd=0, relief="flat",
+            highlightthickness=2, highlightbackground=BORDER, highlightcolor=GREEN
         )
-        self.quick_entry.pack(side="left", ipady=5, padx=(0, 8))
+        self.quick_entry.pack(side="left", fill="x", expand=True, ipady=7)
         self.quick_entry.bind("<Return>", lambda e: self.process_quick_input())
-
-        btn_exec_quick = tk.Button(
-            quick_frame, text="EKSEKUSI", font=("Segoe UI", 9, "bold"),
-            bg=GREEN, fg=WHITE, bd=0, padx=12, pady=5, cursor="hand2",
-            command=self.process_quick_input
-        )
-        btn_exec_quick.pack(side="left", padx=(0, 12))
+        self.quick_entry.bind("<KP_Enter>", lambda e: self.process_quick_input())
 
         tk.Label(
-            quick_frame,
-            text="[1 / zona 1] = Standard  |  [c1 / czona 1] = Reopen  |  [p1 / pzona 1] = P-Map",
-            font=("Segoe UI", 8), bg=PANEL, fg=MUTED
-        ).pack(side="left")
+            quick_top, text="ENTER \u21b5", font=("Consolas", 10, "bold"),
+            bg=BORDER, fg=WHITE, padx=12, pady=9
+        ).pack(side="left", padx=(8, 0))
 
-        # 3. TAB NAVIGASI
+        legend = tk.Frame(quick_card, bg=PANEL)
+        legend.pack(fill="x", pady=(10, 0))
+        for text, color in (
+            ("1 / zona 1  =  RESTART", BLUE),
+            ("C1 / czona 1  =  REOPEN DPD", ORANGE),
+            ("P1 / pzona 1  =  RESTART DCP", GREEN),
+        ):
+            tk.Label(
+                legend, text=text, font=("Segoe UI", 8, "bold"),
+                bg=color, fg=WHITE, padx=10, pady=3
+            ).pack(side="left", padx=(0, 6))
+
+        # 3. KETERANGAN PENTING
+        warn = tk.Frame(self.root, bg=WARN_BG)
+        warn.pack(fill="x", padx=12, pady=6)
+        tk.Frame(warn, bg=RED, width=8).pack(side="left", fill="y")
+        warn_lbl = tk.Label(
+            warn,
+            text="\u26a0  JIKA GAGAL, berarti Sementara Restart, Jangan Restart Lagi "
+                 "atau ketik C1 untuk zona 1 dan cukup sekali",
+            font=("Segoe UI", 11, "bold"), bg=WARN_BG, fg=WARN_FG,
+            justify="left", anchor="w", wraplength=700, padx=14, pady=10
+        )
+        warn_lbl.pack(side="left", fill="x", expand=True)
+        warn.bind("<Configure>", lambda e: warn_lbl.config(wraplength=max(200, e.width - 50)))
+
+        # 4. TAB NAVIGASI
         tab_frame = tk.Frame(self.root, bg=BG)
-        tab_frame.pack(fill="x", padx=10, pady=5)
+        tab_frame.pack(fill="x", padx=12, pady=6)
 
         self.tab_buttons = []
         for idx, sec in enumerate(SECTIONS):
@@ -252,15 +277,42 @@ class RestartWinApp:
                 tab_frame, text=sec[0], font=("Segoe UI", 10, "bold"),
                 bg=sec[4] if idx == 0 else PANEL,
                 fg=WHITE if idx == 0 else MUTED,
-                bd=0, pady=8, cursor="hand2",
+                activebackground=sec[4], activeforeground=WHITE,
+                bd=0, relief="flat", pady=10, cursor="hand2", takefocus=0,
                 command=lambda i=idx: self.select_tab(i)
             )
             btn.pack(side="left", fill="x", expand=True, padx=(0 if idx == 0 else 4, 0))
+            btn.bind("<Enter>", lambda e, i=idx, b=btn: b.config(bg=HOVER) if i != self.current_tab else None)
+            btn.bind("<Leave>", lambda e, i=idx, b=btn: b.config(bg=PANEL) if i != self.current_tab else None)
             self.tab_buttons.append(btn)
 
-        # 4. AREA KONTEN (SCROLLABLE CANVAS)
+        # 5. PANEL AKTIVITAS BAWAH (dipasang dulu agar selalu terlihat)
+        activity = tk.Frame(self.root, bg=PANEL, padx=14, pady=8)
+        activity.pack(side="bottom", fill="x", padx=12, pady=(6, 12))
+
+        act_top = tk.Frame(activity, bg=PANEL)
+        act_top.pack(fill="x")
+
+        tk.Label(
+            act_top, text="SYSTEM ACTIVITY", font=("Segoe UI", 8, "bold"),
+            bg=PANEL, fg=MUTED
+        ).pack(side="left")
+
+        self.conn_label = tk.Label(
+            act_top, text="READY", font=("Segoe UI", 8, "bold"),
+            bg=PANEL, fg=GREEN
+        )
+        self.conn_label.pack(side="right")
+
+        self.status_label = tk.Label(
+            activity, text="Menunggu data zona...", font=("Segoe UI", 9),
+            bg=PANEL, fg=WHITE, anchor="w"
+        )
+        self.status_label.pack(fill="x", pady=(3, 0))
+
+        # 6. AREA KONTEN (SCROLLABLE CANVAS)
         content_wrap = tk.Frame(self.root, bg=BG)
-        content_wrap.pack(fill="both", expand=True, padx=10, pady=5)
+        content_wrap.pack(fill="both", expand=True, padx=12, pady=6)
 
         self.canvas = tk.Canvas(content_wrap, bg=BG, highlightthickness=0)
         self.scrollbar = ttk.Scrollbar(content_wrap, orient="vertical", command=self.canvas.yview)
@@ -282,29 +334,35 @@ class RestartWinApp:
 
         self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
 
-        # 5. PANEL AKTIVITAS BAWAH
-        activity = tk.Frame(self.root, bg=PANEL, padx=12, pady=8)
-        activity.pack(fill="x", padx=10, pady=(5, 10))
+        # 7. FOKUS OTOMATIS KE QUICK COMMAND
+        self.root.bind("<FocusIn>", self._on_root_focus)
+        self.root.bind_all("<ButtonRelease-1>", self._on_any_click, add="+")
+        self.root.after(100, self.focus_quick)
 
-        act_top = tk.Frame(activity, bg=PANEL)
-        act_top.pack(fill="x")
+    # --------------------------------------------------------
+    # FOKUS OTOMATIS
+    # --------------------------------------------------------
 
-        tk.Label(
-            act_top, text="SYSTEM ACTIVITY", font=("Segoe UI", 8, "bold"),
-            bg=PANEL, fg=WHITE
-        ).pack(side="left")
+    def focus_quick(self):
+        """Selalu kembalikan kursor ke inputan Quick Command."""
+        try:
+            if self.settings_win is not None and self.settings_win.winfo_exists():
+                return
+            self.quick_entry.focus_set()
+            self.quick_entry.icursor(tk.END)
+        except tk.TclError:
+            pass
 
-        self.conn_label = tk.Label(
-            act_top, text="READY", font=("Segoe UI", 8, "bold"),
-            bg=PANEL, fg=GREEN
-        )
-        self.conn_label.pack(side="right")
+    def _on_root_focus(self, event):
+        if event.widget is self.root:
+            self.focus_quick()
 
-        self.status_label = tk.Label(
-            activity, text="Menunggu data zona...", font=("Segoe UI", 9),
-            bg=PANEL, fg=MUTED, anchor="w"
-        )
-        self.status_label.pack(fill="x", pady=(3, 0))
+    def _on_any_click(self, event):
+        try:
+            if event.widget.winfo_toplevel() is self.root and event.widget is not self.quick_entry:
+                self.root.after(20, self.focus_quick)
+        except Exception:
+            pass
 
     def _on_mousewheel(self, event):
         if self.canvas.winfo_exists():
@@ -352,6 +410,7 @@ class RestartWinApp:
             msg = "Zona '{}' tidak ditemukan pada kategori {}.".format(zona_val, tipe_name)
             self.set_status("[GAGAL] " + msg)
             messagebox.showwarning("Zona Tidak Ditemukan", msg)
+            self.focus_quick()
             return
 
         _, _, cmd_fn, label_fn, _ = SECTIONS[tab_idx]
@@ -436,6 +495,7 @@ class RestartWinApp:
                 pass
             self.settings_win = None
             win.destroy()
+            self.focus_quick()
 
         win.protocol("WM_DELETE_WINDOW", on_close)
 
@@ -450,7 +510,6 @@ class RestartWinApp:
         act_bar.pack(side="bottom", fill="x")
 
         # 3. PACK BARIS EXPORT & IMPORT (DI ATAS TOMBOL SIMPAN)
-        # PERBAIKAN: pady tuple diletakkan di .pack(), bukan di tk.Frame()
         io_bar = tk.Frame(win, bg=BG, padx=12)
         io_bar.pack(side="bottom", fill="x", pady=(8, 0))
 
@@ -511,6 +570,14 @@ class RestartWinApp:
                 t_lbl = TIPE_LABELS.get(t_val, t_val)
                 listbox.insert(tk.END, "Zona {:<4} | {:<10} | {}".format(z, t_lbl, ip_addr))
 
+        def upsert_manual_entry(zona, tipe_val, ip_addr):
+            for row in temp_manual:
+                if row[0].lower() == zona.lower() and row[1] == tipe_val:
+                    row[0] = zona
+                    row[2] = ip_addr
+                    return
+            temp_manual.append([zona, tipe_val, ip_addr])
+
         def add_manual():
             z = ent_zona.get().strip()
             ip_addr = ent_ip.get().strip()
@@ -518,7 +585,13 @@ class RestartWinApp:
             if not z or not ip_addr:
                 messagebox.showwarning("Input Kosong", "Zona dan IP Target wajib diisi.", parent=win)
                 return
-            temp_manual.append([z, t_val, ip_addr])
+
+            upsert_manual_entry(z, t_val, ip_addr)
+
+            # Jika tipe DPD (STANDARD), otomatis isi/perbarui juga REOPEN DPD (REOPEN) dengan IP yang sama
+            if t_val == "STANDARD":
+                upsert_manual_entry(z, "REOPEN", ip_addr)
+
             ent_zona.delete(0, tk.END)
             refresh_listbox()
 
@@ -795,6 +868,7 @@ class RestartWinApp:
             else:
                 btn.config(bg=PANEL, fg=MUTED)
         self.render()
+        self.focus_quick()
 
     def render(self):
         for w in self.scroll_frame.winfo_children():
@@ -833,7 +907,8 @@ class RestartWinApp:
                     grid.columnconfigure(c, weight=1)
                     b = tk.Button(
                         grid, text="ZONA " + z, font=("Segoe UI", 9, "bold"),
-                        bg=color, fg=WHITE, bd=0, pady=8, cursor="hand2",
+                        bg=color, fg=WHITE, activebackground=color, activeforeground=WHITE,
+                        bd=0, pady=8, cursor="hand2", takefocus=0,
                         command=lambda zz=z, i=ip: self.on_card(label_fn(zz), i, cmd_fn(zz))
                     )
                     b.grid(row=r, column=c, sticky="ew", padx=3, pady=3)
@@ -861,8 +936,11 @@ class RestartWinApp:
             lbl_s = tk.Label(body, text="TARGET : " + ip, font=("Consolas", 9), bg=CARD_BG, fg=MUTED, anchor="w")
             lbl_s.pack(fill="x", pady=(4, 0))
 
-            for widget in (card, body, lbl_t, lbl_s):
+            hover_widgets = (card, body, lbl_t, lbl_s)
+            for widget in hover_widgets:
                 widget.bind("<Button-1>", lambda e, z=zona, i=ip: self.on_card(label_fn(z), i, cmd_fn(z)))
+                widget.bind("<Enter>", lambda e, ws=hover_widgets: [w.config(bg=CARD_HOVER) for w in ws])
+                widget.bind("<Leave>", lambda e, ws=hover_widgets: [w.config(bg=CARD_BG) for w in ws])
 
     # --------------------------------------------------------
     # EKSEKUSI PERINTAH
@@ -909,6 +987,7 @@ class RestartWinApp:
         self.set_status(result)
         self.conn_label.config(text="COMMAND OK" if ok else "COMMAND FAILED", fg=color)
         self.show_toast_popup(ok, result)
+        self.focus_quick()
 
     def show_toast_popup(self, ok, detail):
         if detail.startswith("["):
@@ -931,7 +1010,7 @@ class RestartWinApp:
         tk.Label(pop, text=title, font=("Segoe UI", 14, "bold"), bg=PANEL, fg=accent).pack(pady=(16, 6))
         tk.Label(pop, text=detail, font=("Segoe UI", 9), bg=PANEL, fg=WHITE, wraplength=300, justify="center").pack(padx=15)
 
-        pop.after(1400 if ok else 3200, pop.destroy)
+        pop.after(1400 if ok else 3200, lambda: (pop.destroy(), self.focus_quick()))
 
     def set_status(self, text):
         timestamp = datetime.now().strftime("%H:%M:%S")
