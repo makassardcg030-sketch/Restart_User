@@ -58,7 +58,7 @@ def get_app_dir():
 
 
 def get_resource_path(relative_path):
-    """Mendapatkan path asset (seperti app.ico) baik saat mode script maupun PyInstaller."""
+    """Mendapatkan path asset (seperti icon2.png) baik saat mode script maupun PyInstaller."""
     if hasattr(sys, "_MEIPASS"):
         return os.path.join(sys._MEIPASS, relative_path)
     return os.path.join(get_app_dir(), relative_path)
@@ -163,7 +163,7 @@ class RestartWinApp:
         self.root.after(300, self.load_zones)
 
     def set_window_icon(self, win):
-        ico_path = get_resource_path("app.ico")
+        ico_path = get_resource_path("icon2.png")
         if os.path.exists(ico_path):
             try:
                 win.iconbitmap(ico_path)
