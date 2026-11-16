@@ -146,6 +146,7 @@ class RestartWinApp:
         self.data = {}
         self.current_tab = 0
         self.busy = False
+        self.settings_win = None
 
         app_dir = get_app_dir()
         self.cache_file = os.path.join(app_dir, "zones_cache.json")
@@ -160,7 +161,8 @@ class RestartWinApp:
         self.setup_styles()
         self.build_ui()
 
-        self.root.after(300, self.load_zones)
+        self.root.update_idletasks()
+        self.root.after(200, self.load_zones)
 
     def set_window_icon(self, win):
         ico_path = get_resource_path("icon2.ico")
@@ -362,7 +364,7 @@ class RestartWinApp:
 
     def read_source_mode(self):
         try:
-            with open(self.mode_file, "r") as f:
+            with open(self.mode_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
             if data.get("mode") in ("db", "manual"):
                 return data["mode"]
@@ -371,13 +373,13 @@ class RestartWinApp:
         return "db"
 
     def save_source_mode(self, mode):
-        with open(self.mode_file, "w") as f:
+        with open(self.mode_file, "w", encoding="utf-8") as f:
             json.dump({"mode": mode}, f, indent=2)
         self.source_mode = mode
 
     def read_db_config(self):
         try:
-            with open(self.config_file, "r") as f:
+            with open(self.config_file, "r", encoding="utf-8") as f:
                 cfg = json.load(f)
             if cfg.get("host") and cfg.get("user") and cfg.get("database"):
                 return cfg
@@ -386,13 +388,13 @@ class RestartWinApp:
         return None
 
     def save_db_config(self, cfg):
-        with open(self.config_file, "w") as f:
+        with open(self.config_file, "w", encoding="utf-8") as f:
             json.dump(cfg, f, indent=2)
         self.db_config = cfg
 
     def read_manual_zones(self):
         try:
-            with open(self.manual_file, "r") as f:
+            with open(self.manual_file, "r", encoding="utf-8") as f:
                 rows = json.load(f)
             if isinstance(rows, list):
                 return rows
@@ -401,7 +403,7 @@ class RestartWinApp:
         return []
 
     def save_manual_zones(self, rows):
-        with open(self.manual_file, "w") as f:
+        with open(self.manual_file, "w", encoding="utf-8") as f:
             json.dump(rows, f, indent=2)
         self.manual_zones = rows
 
@@ -410,17 +412,32 @@ class RestartWinApp:
     # --------------------------------------------------------
 
     def open_settings(self, first_time=False):
+        if self.settings_win is not None and self.settings_win.winfo_exists():
+            self.settings_win.lift()
+            self.settings_win.focus_force()
+            return
+
         win = tk.Toplevel(self.root)
+        self.settings_win = win
+        win.withdraw()
+
         win.title("Pengaturan Sumber Zona")
-        win.geometry("500x600")
         win.minsize(480, 560)
         win.configure(bg=BG)
         win.transient(self.root)
-        win.grab_set()
         self.set_window_icon(win)
 
-        if first_time:
-            win.protocol("WM_DELETE_WINDOW", lambda: None)
+        def on_close():
+            if first_time:
+                return
+            try:
+                win.grab_release()
+            except Exception:
+                pass
+            self.settings_win = None
+            win.destroy()
+
+        win.protocol("WM_DELETE_WINDOW", on_close)
 
         mode_var = tk.StringVar(value=self.source_mode)
 
@@ -433,8 +450,9 @@ class RestartWinApp:
         act_bar.pack(side="bottom", fill="x")
 
         # 3. PACK BARIS EXPORT & IMPORT (DI ATAS TOMBOL SIMPAN)
-        io_bar = tk.Frame(win, bg=BG, pady=(8, 0), padx=12)
-        io_bar.pack(side="bottom", fill="x")
+        # PERBAIKAN: pady tuple diletakkan di .pack(), bukan di tk.Frame()
+        io_bar = tk.Frame(win, bg=BG, padx=12)
+        io_bar.pack(side="bottom", fill="x", pady=(8, 0))
 
         # 4. PACK CONTAINER FORM TERAKHIR AGAR MENGISI SISA RUANG TENGAH
         container = tk.Frame(win, bg=PANEL, padx=14, pady=14)
@@ -535,6 +553,7 @@ class RestartWinApp:
                 btn_man.config(bg=BLUE)
                 btn_db.config(bg=CARD_BG)
                 manual_frame.pack(fill="both", expand=True)
+            win.update_idletasks()
 
         btn_db = tk.Button(
             mode_bar, text="MODE DATABASE", font=("Segoe UI", 9, "bold"),
@@ -550,7 +569,7 @@ class RestartWinApp:
 
         switch_mode(self.source_mode)
 
-        # --- ISI TOMBOL EXPORT & IMPORT KE io_bar YANG SUDAH DI-PACK DI ATAS ---
+        # --- TOMBOL EXPORT & IMPORT ---
         def export_settings():
             file_path = filedialog.asksaveasfilename(
                 parent=win,
@@ -651,7 +670,7 @@ class RestartWinApp:
             font=("Segoe UI", 8, "bold"), bd=0, pady=6, cursor="hand2", command=import_settings
         ).pack(side="left", fill="x", expand=True, padx=(4, 0))
 
-        # --- ISI TOMBOL SIMPAN & BATAL KE act_bar YANG SUDAH DI-PACK DI ATAS ---
+        # --- TOMBOL SIMPAN & BATAL ---
         def save_all():
             if mode_var.get() == "db":
                 new_db = {k: v.get().strip() for k, v in db_entries.items()}
@@ -672,6 +691,11 @@ class RestartWinApp:
                 self.save_manual_zones(temp_manual)
                 self.save_source_mode("manual")
 
+            try:
+                win.grab_release()
+            except Exception:
+                pass
+            self.settings_win = None
             win.destroy()
             self.load_zones()
 
@@ -683,8 +707,21 @@ class RestartWinApp:
         if not first_time:
             tk.Button(
                 act_bar, text="BATAL", bg=RED, fg=WHITE,
-                font=("Segoe UI", 9, "bold"), bd=0, pady=8, cursor="hand2", command=win.destroy
+                font=("Segoe UI", 9, "bold"), bd=0, pady=8, cursor="hand2", command=on_close
             ).pack(side="left", fill="x", expand=True, padx=(4, 0))
+
+        self.root.update_idletasks()
+        win.update_idletasks()
+        w, h = 500, 600
+        x = self.root.winfo_rootx() + (self.root.winfo_width() // 2) - (w // 2)
+        y = self.root.winfo_rooty() + (self.root.winfo_height() // 2) - (h // 2)
+        win.geometry("{}x{}+{}+{}".format(w, h, max(0, x), max(0, y)))
+
+        win.deiconify()
+        win.update()
+        win.lift()
+        win.focus_force()
+        win.grab_set()
 
     # --------------------------------------------------------
     # LOAD DATA ZONA
@@ -720,13 +757,13 @@ class RestartWinApp:
     def _load_thread(self):
         try:
             data = fetch_zones_from_db(self.db_config)
-            with open(self.cache_file, "w") as f:
+            with open(self.cache_file, "w", encoding="utf-8") as f:
                 json.dump(data, f)
             msg = "Database berhasil dimuat."
             connected = True
         except Exception as e:
             try:
-                with open(self.cache_file, "r") as f:
+                with open(self.cache_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 msg = "Database gagal. Menggunakan cache terakhir."
                 connected = False
