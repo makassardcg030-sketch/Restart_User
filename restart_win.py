@@ -9,7 +9,7 @@ from datetime import datetime
 from tkinter import filedialog, messagebox, ttk
 
 # ============================================================
-# KONFIGURASI
+# KONFIGURASI KITA
 # ============================================================
 
 DB_DEFAULTS = {
